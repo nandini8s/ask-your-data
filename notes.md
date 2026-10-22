@@ -34,3 +34,10 @@ Main takeaways:
 3. It uses all the text in the tool definition (name, descriptions, parameter descriptions). When something is missing, it guesses (PostgreSQL syntax, the zebra table).
 4. Identical runs can give different results, and a wrong query can look reasonable, so I need evals and a schema tool.
 5. Tool descriptions are part of the program: changing one sentence changed behavior.
+
+## Day 2 ground truth (campus.db, verified with sqlite3)
+- Highest average night use (hours 0-4): CS Lab Block, 20.0 kWh
+- Highest total use: Main Academic Block, 35,371 kWh (CS Lab Block second, 32,937)
+- Highest-consumption day: 2026-09-24 (3,237 kWh), then 2026-09-25 (3,224)
+- Library avg kWh, hours 0-2: exam week 27.9 vs other days 3.0
+- Row counts: 8 buildings, 11,520 readings, 2 events
