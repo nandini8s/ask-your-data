@@ -5,9 +5,9 @@ import time
 from dotenv import load_dotenv
 
 from tools import get_schema, run_sql
+load_dotenv()
 
-
-MODEL = "gemini-3.8-flash"
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 MAX_TURNS = 8
 SYSTEM_PROMPT = (
     "The campus database is SQLite. Call get_schema before writing SQL to inspect "
@@ -74,6 +74,7 @@ def _create_completion(client, **kwargs):
 
 
 def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
+    print("model:", model)
     """Ask the model a question, executing its database tool calls as needed."""
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -88,6 +89,8 @@ def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
         client = OpenAI(
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
             api_key=api_key,
+            timeout=60.0,
+            max_retries=1,
         )
 
     messages = [
@@ -97,6 +100,7 @@ def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
 
     tool_trace = []
     for turn in range(1, max_turns + 1):
+        print(f"[turn {turn}] calling model...")
         try:
             response = _create_completion(
                 client,
