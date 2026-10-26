@@ -15,7 +15,8 @@ SYSTEM_PROMPT = (
     "tool is read-only. The reading_time column is text, so extract its hour with "
     "substr(reading_time, 12, 2). Join readings with buildings to show building "
     "names. If a table or column does not exist, say so and do not guess. Explain "
-    "results simply and do not claim data that a tool did not return."
+    "results simply and do not claim data that a tool did not return. Write dates "
+    "as YYYY-MM-DD."
 )
 
 TOOL_DEFINITIONS = [

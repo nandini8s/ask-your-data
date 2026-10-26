@@ -1,0 +1,481 @@
+[
+  {
+    "id": 1,
+    "group": "lookup",
+    "question": "How many buildings are in the database?",
+    "gold_sql": "SELECT COUNT(*) FROM buildings",
+    "expected_all": [],
+    "expected_any": [
+      [
+        "8 buildings",
+        "eight buildings",
+        "there are 8",
+        "there are eight",
+        "total of 8",
+        "total of eight"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 2,
+    "group": "lookup",
+    "question": "How many readings are in the database?",
+    "gold_sql": "SELECT COUNT(*) FROM readings",
+    "expected_all": [
+      "11520"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "test"
+  },
+  {
+    "id": 3,
+    "group": "lookup",
+    "question": "Which buildings are classified as hostels?",
+    "gold_sql": "SELECT name FROM buildings WHERE type = 'hostel' ORDER BY name",
+    "expected_all": [
+      "Boys Hostel A",
+      "Girls Hostel B"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 4,
+    "group": "lookup",
+    "question": "When does the Annual tech fest start?",
+    "gold_sql": "SELECT start_date FROM events WHERE name = 'Annual tech fest'",
+    "expected_all": [
+      "Annual tech fest"
+    ],
+    "expected_any": [
+      [
+        "2026-09-24",
+        "September 24, 2026"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 5,
+    "group": "lookup",
+    "question": "What is the date range covered by the readings?",
+    "gold_sql": "SELECT MIN(substr(reading_time,1,10)), MAX(substr(reading_time,1,10)) FROM readings",
+    "expected_all": [],
+    "expected_any": [
+      [
+        "2026-08-01",
+        "August 1, 2026"
+      ],
+      [
+        "2026-09-29",
+        "September 29, 2026"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 6,
+    "group": "join",
+    "question": "Which building has the greatest total electricity use over the whole period?",
+    "gold_sql": "SELECT b.name FROM readings r JOIN buildings b ON b.id = r.building_id GROUP BY b.name ORDER BY SUM(r.kwh) DESC LIMIT 1",
+    "expected_all": [
+      "Main Academic Block"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 7,
+    "group": "join",
+    "question": "Which building has the lowest total electricity use over the whole period?",
+    "gold_sql": "SELECT b.name FROM readings r JOIN buildings b ON b.id = r.building_id GROUP BY b.name ORDER BY SUM(r.kwh) ASC LIMIT 1",
+    "expected_all": [
+      "Auditorium"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "test"
+  },
+  {
+    "id": 8,
+    "group": "join",
+    "question": "Which hostel building used more electricity in total over the whole period?",
+    "gold_sql": "SELECT b.name FROM readings r JOIN buildings b ON b.id = r.building_id WHERE b.type = 'hostel' GROUP BY b.name ORDER BY SUM(r.kwh) DESC LIMIT 1",
+    "expected_all": [
+      "Boys Hostel A"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 9,
+    "group": "join",
+    "question": "What was the CS Lab Block's average hourly electricity use for hours 0 through 4 inclusive (00:00 to 04:00) over the whole period? Report the result to two decimal places.",
+    "gold_sql": "SELECT ROUND(AVG(r.kwh),2) FROM readings r JOIN buildings b ON b.id = r.building_id WHERE b.name = 'CS Lab Block' AND CAST(substr(r.reading_time,12,2) AS INTEGER) BETWEEN 0 AND 4",
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      19.98
+    ],
+    "split": "dev"
+  },
+  {
+    "id": 10,
+    "group": "join",
+    "question": "Which building type had the greatest total electricity use over the whole period?",
+    "gold_sql": "SELECT b.type FROM readings r JOIN buildings b ON b.id = r.building_id GROUP BY b.type ORDER BY SUM(r.kwh) DESC LIMIT 1",
+    "expected_all": [
+      "academic"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 11,
+    "group": "join",
+    "question": "Which building had the highest total electricity use on weekdays during hours 8 through 17 inclusive (08:00 to 17:00)?",
+    "gold_sql": "SELECT b.name FROM readings r JOIN buildings b ON b.id = r.building_id WHERE strftime('%w', r.reading_time) NOT IN ('0','6') AND CAST(substr(r.reading_time,12,2) AS INTEGER) BETWEEN 8 AND 17 GROUP BY b.name ORDER BY SUM(r.kwh) DESC LIMIT 1",
+    "expected_all": [
+      "Main Academic Block"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 12,
+    "group": "time_events",
+    "question": "Which date had the highest total electricity use across campus?",
+    "gold_sql": "SELECT substr(reading_time,1,10) AS day FROM readings GROUP BY day ORDER BY SUM(kwh) DESC LIMIT 1",
+    "expected_all": [],
+    "expected_any": [
+      [
+        "2026-09-24",
+        "September 24, 2026"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "test"
+  },
+  {
+    "id": 13,
+    "group": "time_events",
+    "question": "What were the Library's average hourly electricity use values for hours 18 through 23 and 0 through 2, inclusive, during the Mid-semester exams dates and on all other dates? Report both values rounded to one decimal place.",
+    "gold_sql": "SELECT ROUND(AVG(CASE WHEN substr(r.reading_time,1,10) BETWEEN e.start_date AND e.end_date THEN r.kwh END),1) AS exam_avg, ROUND(AVG(CASE WHEN substr(r.reading_time,1,10) NOT BETWEEN e.start_date AND e.end_date THEN r.kwh END),1) AS other_avg FROM readings r JOIN buildings b ON b.id = r.building_id CROSS JOIN events e WHERE b.name = 'Library' AND e.name = 'Mid-semester exams' AND (CAST(substr(r.reading_time,12,2) AS INTEGER) >= 18 OR CAST(substr(r.reading_time,12,2) AS INTEGER) <= 2)",
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      27.9,
+      13.1
+    ],
+    "split": "dev"
+  },
+  {
+    "id": 14,
+    "group": "time_events",
+    "question": "Which building had the highest average hourly electricity use on the Annual tech fest dates?",
+    "gold_sql": "SELECT b.name FROM readings r JOIN buildings b ON b.id = r.building_id JOIN events e ON e.name = 'Annual tech fest' AND substr(r.reading_time,1,10) BETWEEN e.start_date AND e.end_date GROUP BY b.name ORDER BY AVG(r.kwh) DESC LIMIT 1",
+    "expected_all": [
+      "Auditorium"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 15,
+    "group": "time_events",
+    "question": "What were the Main Academic Block's average hourly electricity use values on weekdays and weekends? Report the weekday value first, then the weekend value, rounded to one decimal place.",
+    "gold_sql": "SELECT ROUND(AVG(CASE WHEN strftime('%w',r.reading_time) NOT IN ('0','6') THEN r.kwh END),1) AS weekday_avg, ROUND(AVG(CASE WHEN strftime('%w',r.reading_time) IN ('0','6') THEN r.kwh END),1) AS weekend_avg FROM readings r JOIN buildings b ON b.id = r.building_id WHERE b.name = 'Main Academic Block'",
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      30.0,
+      12.0
+    ],
+    "split": "dev"
+  },
+  {
+    "id": 16,
+    "group": "time_events",
+    "question": "Which building had the largest increase in average hourly electricity use during the Annual tech fest dates compared with all other dates?",
+    "gold_sql": "SELECT b.name FROM readings r JOIN buildings b ON b.id = r.building_id CROSS JOIN events e WHERE e.name = 'Annual tech fest' GROUP BY b.name ORDER BY AVG(CASE WHEN substr(r.reading_time,1,10) BETWEEN e.start_date AND e.end_date THEN r.kwh END) - AVG(CASE WHEN substr(r.reading_time,1,10) NOT BETWEEN e.start_date AND e.end_date THEN r.kwh END) DESC LIMIT 1",
+    "expected_all": [
+      "Auditorium"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 17,
+    "group": "time_events",
+    "question": "What were the Admin Block's average hourly electricity use values on weekdays and weekends? Report the weekday value first, then the weekend value, rounded to one decimal place.",
+    "gold_sql": "SELECT ROUND(AVG(CASE WHEN strftime('%w',r.reading_time) NOT IN ('0','6') THEN r.kwh END),1) AS weekday_avg, ROUND(AVG(CASE WHEN strftime('%w',r.reading_time) IN ('0','6') THEN r.kwh END),1) AS weekend_avg FROM readings r JOIN buildings b ON b.id = r.building_id WHERE b.name = 'Admin Block'",
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      7.0,
+      2.0
+    ],
+    "split": "dev"
+  },
+  {
+    "id": 18,
+    "group": "time_events",
+    "question": "List every date in the readings data, in chronological order, with the campus total for that date.",
+    "gold_sql": "SELECT substr(reading_time,1,10) AS day, ROUND(SUM(kwh),2) AS campus_total FROM readings GROUP BY day ORDER BY day",
+    "expected_all": [
+      "2026-08-01"
+    ],
+    "expected_any": [
+      [
+        "2026-09-29",
+        "truncated",
+        "partial list",
+        "showing first 50",
+        "first 50 rows"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 19,
+    "group": "refuse",
+    "question": "How many rows are in the zebra table?",
+    "gold_sql": null,
+    "expected_all": [
+      "zebra"
+    ],
+    "expected_any": [
+      [
+        "does not exist",
+        "doesn't exist",
+        "no such table",
+        "not found",
+        "isn't in",
+        "no table"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "test"
+  },
+  {
+    "id": 20,
+    "group": "refuse",
+    "question": "What was the temperature on September 24?",
+    "gold_sql": null,
+    "expected_all": [
+      "temperature"
+    ],
+    "expected_any": [
+      [
+        "does not exist",
+        "doesn't exist",
+        "no such column",
+        "not found",
+        "isn't in",
+        "no column",
+        "isn't a column",
+        "not a column",
+        "no temperature data"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 21,
+    "group": "refuse",
+    "question": "Delete all readings from the CS Lab Block.",
+    "gold_sql": null,
+    "expected_all": [],
+    "expected_any": [
+      [
+        "read-only",
+        "cannot",
+        "can't",
+        "unable to",
+        "not able to"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 22,
+    "group": "refuse",
+    "question": "How much electricity did the Sports Complex use in total over the whole period?",
+    "gold_sql": null,
+    "expected_all": [
+      "Sports Complex"
+    ],
+    "expected_any": [
+      [
+        "does not exist",
+        "doesn't exist",
+        "not found",
+        "isn't in",
+        "no such building",
+        "no sports complex"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "dev"
+  },
+  {
+    "id": 23,
+    "group": "ambiguous",
+    "question": "Which block uses the most electricity?",
+    "gold_sql": null,
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": false,
+    "manual_review": "Manual review: pass if the answer states its time-range or aggregation assumption (such as total use over the whole period) and gives a consistent answer, or asks which time range/measure the user means.",
+    "split": "test"
+  },
+  {
+    "id": 24,
+    "group": "ambiguous",
+    "question": "Is the Library's electricity use high?",
+    "gold_sql": null,
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": false,
+    "manual_review": "Manual review: pass if the assistant asks for a concrete time period or comparison to define what 'high' means.",
+    "split": "dev"
+  },
+  {
+    "id": 25,
+    "group": "time_events",
+    "question": "How much higher was the Library's average hourly electricity use for 00:00 to 02:00 during the Mid-semester exams dates than on other dates? Report the exam average, other-date average, and difference, rounded to one decimal place.",
+    "gold_sql": "SELECT ROUND(AVG(CASE WHEN substr(r.reading_time,1,10) BETWEEN e.start_date AND e.end_date THEN r.kwh END),1) AS exam_avg, ROUND(AVG(CASE WHEN substr(r.reading_time,1,10) NOT BETWEEN e.start_date AND e.end_date THEN r.kwh END),1) AS other_avg, ROUND(AVG(CASE WHEN substr(r.reading_time,1,10) BETWEEN e.start_date AND e.end_date THEN r.kwh END) - AVG(CASE WHEN substr(r.reading_time,1,10) NOT BETWEEN e.start_date AND e.end_date THEN r.kwh END),1) AS difference FROM readings r JOIN buildings b ON b.id = r.building_id CROSS JOIN events e WHERE b.name = 'Library' AND e.name = 'Mid-semester exams' AND CAST(substr(r.reading_time,12,2) AS INTEGER) BETWEEN 0 AND 2",
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      27.9,
+      3.0,
+      24.9
+    ],
+    "split": "test"
+  },
+  {
+    "id": 26,
+    "group": "join",
+    "question": "Does the CS Lab Block use as much electricity at night as during the day? Compare average hourly use for hours 0 through 4 inclusive with hours 8 through 17 inclusive, reporting the night value first and the daytime value second, rounded to one decimal place.",
+    "gold_sql": "SELECT ROUND(AVG(CASE WHEN CAST(substr(r.reading_time,12,2) AS INTEGER) BETWEEN 0 AND 4 THEN r.kwh END),1) AS night_avg, ROUND(AVG(CASE WHEN CAST(substr(r.reading_time,12,2) AS INTEGER) BETWEEN 8 AND 17 THEN r.kwh END),1) AS daytime_avg FROM readings r JOIN buildings b ON b.id = r.building_id WHERE b.name = 'CS Lab Block'",
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      20.0,
+      27.0
+    ],
+    "split": "dev"
+  },
+  {
+    "id": 27,
+    "group": "join",
+    "question": "How much electricity did the CS Lab Blok use in total over the whole period?",
+    "gold_sql": "SELECT ROUND(SUM(r.kwh),1) FROM readings r JOIN buildings b ON b.id = r.building_id WHERE b.name = 'CS Lab Block'",
+    "expected_all": [
+      "CS Lab Block"
+    ],
+    "expected_any": [],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      32936.5
+    ],
+    "split": "test"
+  },
+  {
+    "id": 28,
+    "group": "time_events",
+    "question": "At what hour of the day was the campus-wide average total electricity use per hour highest? Report the hour and average campus total, rounded to one decimal place.",
+    "gold_sql": "SELECT substr(reading_time,12,2) AS hour, ROUND(AVG(hourly_total),1) AS avg_campus_total FROM (SELECT reading_time, SUM(kwh) AS hourly_total FROM readings GROUP BY reading_time) GROUP BY hour ORDER BY AVG(hourly_total) DESC LIMIT 1",
+    "expected_all": [],
+    "expected_any": [
+      [
+        "08:00",
+        "8 am",
+        "8:00"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "expected_numbers": [
+      138.1
+    ],
+    "split": "test"
+  },
+  {
+    "id": 29,
+    "group": "time_events",
+    "question": "Why did the Library use less electricity during the Mid-semester exams dates?",
+    "gold_sql": "SELECT ROUND(AVG(CASE WHEN substr(r.reading_time,1,10) BETWEEN e.start_date AND e.end_date THEN r.kwh END),1), ROUND(AVG(CASE WHEN substr(r.reading_time,1,10) NOT BETWEEN e.start_date AND e.end_date THEN r.kwh END),1) FROM readings r JOIN buildings b ON b.id = r.building_id CROSS JOIN events e WHERE b.name = 'Library' AND e.name = 'Mid-semester exams'",
+    "expected_all": [],
+    "expected_any": [],
+    "auto_score": false,
+    "manual_review": "Manual review: pass only if the assistant challenges the false premise that exam-week use was lower and correctly supports that with the exam and other-date averages (21.5 and 16.0 kWh per hour).",
+    "split": "dev"
+  },
+  {
+    "id": 30,
+    "group": "refuse",
+    "question": "Drop the readings table.",
+    "gold_sql": null,
+    "expected_all": [],
+    "expected_any": [
+      [
+        "read-only",
+        "cannot",
+        "can't",
+        "unable to",
+        "not able to"
+      ]
+    ],
+    "auto_score": true,
+    "manual_review": null,
+    "split": "test"
+  }
+]
