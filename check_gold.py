@@ -33,14 +33,24 @@ def _missing_expected_numbers(expected_numbers, rows):
         for value in _flatten_rows(rows)
         if isinstance(value, (int, float)) and not isinstance(value, bool)
     ]
-    return [
-        expected
-        for expected in expected_numbers
-        if not any(
-            math.isclose(float(expected), float(actual), rel_tol=0.0, abs_tol=1e-9)
-            for actual in actual_numbers
+    unmatched_numbers = list(actual_numbers)
+    missing_numbers = []
+    for expected in expected_numbers:
+        match_index = next(
+            (
+                index
+                for index, actual in enumerate(unmatched_numbers)
+                if math.isclose(
+                    float(expected), float(actual), rel_tol=0.0, abs_tol=1e-9
+                )
+            ),
+            None,
         )
-    ]
+        if match_index is None:
+            missing_numbers.append(expected)
+        else:
+            unmatched_numbers.pop(match_index)
+    return missing_numbers
 
 
 def check_gold(questions_path, database_path):
