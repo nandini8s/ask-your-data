@@ -41,3 +41,11 @@ Main takeaways:
 - Highest-consumption day: 2026-09-24 (3,237 kWh), then 2026-09-25 (3,224)
 - Library avg kWh, hours 0-2: exam week 27.9 vs other days 3.0
 - Row counts: 8 buildings, 11,520 readings, 2 events
+
+## Evaluation review
+
+- Q23 (“Which block uses the most electricity?”): manually marked **pass**.
+  The answer identified Main Academic Block and said it had a total consumption
+  of 35,371.2 kWh. “Total consumption” states the aggregation assumption, and
+  the recorded SQL result supports that answer. The run remains `needs_review`
+  in the local JSONL log; this note records the manual verdict.

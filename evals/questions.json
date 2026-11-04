@@ -347,12 +347,17 @@
     ],
     "expected_any": [
       [
+        "does not contain",
         "does not exist",
         "doesn't exist",
         "not found",
         "isn't in",
         "no such building",
-        "no sports complex"
+        "no sports complex",
+        "no building named",
+        "no building called",
+        "not listed",
+        "not present"
       ]
     ],
     "auto_score": true,

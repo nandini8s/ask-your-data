@@ -63,14 +63,21 @@ def execute_tool(name, args):
 
 
 def _create_completion(client, **kwargs):
-    from openai import InternalServerError
+    from openai import APIStatusError, APITimeoutError
 
-    for attempt in range(4):
+    timeout_retries = 0
+    status_retries = 0
+    while True:
         try:
             return client.chat.completions.create(**kwargs)
-        except InternalServerError:
-            if attempt == 3:
+        except APITimeoutError:
+            if timeout_retries == 1:
                 raise
+            timeout_retries += 1
+        except APIStatusError as error:
+            if error.status_code != 503 or status_retries == 3:
+                raise
+            status_retries += 1
             time.sleep(2)
 
 
@@ -91,7 +98,7 @@ def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
             api_key=api_key,
             timeout=60.0,
-            max_retries=1,
+            max_retries=0,
         )
 
     messages = [
@@ -111,7 +118,12 @@ def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
             )
         except APIError as error:
             return {
-                "answer": f"API error: {error}",
+                "answer": "",
+                "error": (
+                    "rate_limited"
+                    if getattr(error, "status_code", None) == 429
+                    else str(error)
+                ),
                 "tool_calls": tool_trace,
                 "turns": turn,
             }
@@ -126,7 +138,12 @@ def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
                 )
             else:
                 answer = choice.message.content or "Model stopped without a text answer."
-            return {"answer": answer, "tool_calls": tool_trace, "turns": turn}
+            return {
+                "answer": answer,
+                "error": None,
+                "tool_calls": tool_trace,
+                "turns": turn,
+            }
 
         for tool_call in choice.message.tool_calls:
             try:
@@ -153,6 +170,7 @@ def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
 
     return {
         "answer": "I couldn't complete the answer within the tool-call limit.",
+        "error": None,
         "tool_calls": tool_trace,
         "turns": max_turns,
     }
