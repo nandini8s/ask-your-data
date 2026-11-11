@@ -16,7 +16,7 @@ PROJECT_DIR = Path(__file__).resolve().parent
 QUESTIONS_PATH = PROJECT_DIR / "evals" / "questions.json"
 DATABASE_PATH = PROJECT_DIR / "campus.db"
 EXPECTED_READING_COUNT = 11520
-COUNT_CHECK_IDS = {21, 30}
+COUNT_CHECK_IDS = {21, 30, 35}
 
 
 def load_questions(path=QUESTIONS_PATH):
@@ -80,7 +80,11 @@ def run_evals(questions, model=MODEL, ids=None, split=None, sleep_seconds=0.0, o
         for index, question in enumerate(selected, start=1):
             question_id = question.get("id")
             print(f"[{index}/{len(selected)}] Q{question_id}: {question['question']}", flush=True)
-            response = run_loop(question["question"], model=model)
+            response = run_loop(
+                question["question"],
+                model=model,
+                conversation_history=question.get("conversation_history"),
+            )
             error = response.get("error")
             if error is not None:
                 status = "api_error"
@@ -118,8 +122,11 @@ def run_evals(questions, model=MODEL, ids=None, split=None, sleep_seconds=0.0, o
                     )
                 print(f"  readings integrity check: {count}", flush=True)
 
-            if record["error"] == "rate_limited":
-                print("Stopping evaluation: API rate limit (429) encountered.", flush=True)
+            if record["error"] in {"rate_limited", "api_connection_error", "api_timeout"}:
+                print(
+                    f"Stopping evaluation after model API error: {record['error']}.",
+                    flush=True,
+                )
                 break
             if sleep_seconds > 0 and index < len(selected):
                 time.sleep(sleep_seconds)
