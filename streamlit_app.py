@@ -18,76 +18,72 @@ def _friendly_error(error):
     return "The agent could not complete this request. Please try again later."
 
 
+def _render_tool_trace(result, key):
+    tool_calls = result.get("tool_calls") or []
+    st.caption(f"Executed tool calls: {len(tool_calls)}")
+    with st.expander("View tool trace", key=key):
+        if not tool_calls:
+            st.info("No tool calls were executed for this question.")
+        for index, call in enumerate(tool_calls, start=1):
+            if not isinstance(call, dict):
+                continue
+            st.markdown(f"**{index}. {call.get('name', 'Tool')}**")
+            arguments = call.get("arguments")
+            if arguments:
+                st.json(arguments)
+            if call.get("result") is not None:
+                st.code(str(call["result"]), language="text")
+
+
 st.set_page_config(page_title="Campus Electricity AI Agent")
 st.title("Campus Electricity AI Agent")
 st.write("Ask questions about campus electricity consumption.")
 
-with st.form("agent_question_form"):
-    question_input = st.text_area("Your question")
-    submitted = st.form_submit_button("Ask Agent")
+if "conversation" not in st.session_state:
+    st.session_state.conversation = []
 
-if submitted:
-    question = question_input.strip()
-    if not question:
-        st.session_state.pop("agent_question", None)
-        st.session_state.pop("agent_result", None)
-        st.warning("Enter a question before submitting.")
-    else:
-        st.session_state["agent_question"] = question
-        st.session_state["agent_result"] = None
-        try:
-            with st.spinner("Asking the agent..."):
-                st.session_state["agent_result"] = run_loop(question)
-        except SystemExit as error:
-            st.session_state["agent_result"] = {
-                "answer": "",
-                "error": (
-                    "missing_api_key"
-                    if str(error) == "Set GEMINI_API_KEY in your environment or .env file."
-                    else "unexpected_error"
-                ),
-                "tool_calls": [],
-                "turns": 0,
-            }
-        except Exception:
-            st.session_state["agent_result"] = {
-                "answer": "",
-                "error": "unexpected_error",
-                "tool_calls": [],
-                "turns": 0,
-            }
+if st.button("New Chat"):
+    st.session_state.conversation = []
+    st.rerun()
 
-saved_question = st.session_state.get("agent_question")
-result = st.session_state.get("agent_result")
+question = st.chat_input("Ask about campus electricity consumption...")
 
-if saved_question and result is not None:
-    st.subheader("Your question")
-    st.write(saved_question)
+if question:
+    history = []
+    for turn in st.session_state.conversation:
+        history.append({
+            "role": "user",
+            "content": turn["question"],
+        })
+        if turn["result"].get("answer"):
+            history.append({
+                "role": "assistant",
+                "content": turn["result"]["answer"],
+            })
+    try:
+        with st.spinner("Asking the agent..."):
+            result = run_loop(question, conversation_history=history)
+    except SystemExit as error:
+        result = {
+            "answer": "",
+            "error": (
+                "missing_api_key"
+                if str(error) == "Set GEMINI_API_KEY in your environment or .env file."
+                else "unexpected_error"
+            ),
+            "tool_calls": [],
+            "turns": 0,
+        }
+    except Exception:
+        result = {"answer": "", "error": "unexpected_error", "tool_calls": [], "turns": 0}
+    st.session_state.conversation.append({"question": question, "result": result})
 
-    tool_calls = result.get("tool_calls") or []
-    if isinstance(tool_calls, list):
-        st.caption(f"Executed tool calls: {len(tool_calls)}")
-
-    error = result.get("error")
-    if error is not None:
-        st.error(_friendly_error(error))
-    else:
-        st.subheader("Answer")
-        st.markdown(result.get("answer") or "The agent returned no answer.")
-
-    with st.expander("View executed SQL"):
-        sql_queries = [
-            call.get("arguments", {}).get("query")
-            for call in tool_calls
-            if isinstance(call, dict)
-            and call.get("name") == "run_sql"
-            and isinstance(call.get("arguments"), dict)
-            and isinstance(call["arguments"].get("query"), str)
-        ]
-        if not sql_queries:
-            st.info("No SQL query was executed for this question.")
+for index, turn in enumerate(st.session_state.conversation):
+    st.chat_message("user").write(turn["question"])
+    with st.chat_message("assistant"):
+        result = turn["result"]
+        if result.get("error") is not None:
+            st.error(_friendly_error(result["error"]))
         else:
-            for index, query in enumerate(sql_queries, start=1):
-                if len(sql_queries) > 1:
-                    st.markdown(f"**SQL query {index}**")
-                st.code(query, language="sql")
+            st.markdown(result.get("answer") or "The agent returned no answer.")
+        _render_tool_trace(result, key=f"tool_trace_{index}")

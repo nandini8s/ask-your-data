@@ -81,9 +81,15 @@ def _create_completion(client, **kwargs):
             time.sleep(2)
 
 
-def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
-    print("model:", model)
+def run_loop(
+    question,
+    client=None,
+    model=MODEL,
+    max_turns=MAX_TURNS,
+    conversation_history=None,
+):
     """Ask the model a question, executing its database tool calls as needed."""
+    print("model:", model)
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
@@ -103,8 +109,14 @@ def run_loop(question, client=None, model=MODEL, max_turns=MAX_TURNS):
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": question},
     ]
+    if conversation_history:
+        for message in conversation_history:
+            if isinstance(message, dict) and message.get("role") in ("user", "assistant"):
+                content = message.get("content")
+                if isinstance(content, str) and content.strip():
+                    messages.append({"role": message["role"], "content": content})
+    messages.append({"role": "user", "content": question})
 
     tool_trace = []
     for turn in range(1, max_turns + 1):
