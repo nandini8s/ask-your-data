@@ -6,6 +6,7 @@ import re
 import sqlite3
 import time
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 from evals.scoring import score_answer
@@ -38,28 +39,63 @@ def _readings_count():
         return connection.execute("SELECT COUNT(*) FROM readings").fetchone()[0]
 
 
-def _print_summary(results):
-    scored = [
-        result for result in results
-        if result["status"] in ("passed", "failed")
-    ]
-    passed = sum(result["status"] == "passed" for result in scored)
-    accuracy = f"{passed}/{len(scored)} ({passed / len(scored):.1%})" if scored else "n/a (0 scored)"
-    turns = [result["turns"] for result in results if isinstance(result.get("turns"), (int, float))]
-    average_turns = f"{sum(turns) / len(turns):.2f}" if turns else "n/a"
-    api_errors = sum(result.get("error") is not None for result in results)
+def _accuracy_stats(results):
+    passed = sum(result["status"] == "passed" for result in results)
+    failed = sum(result["status"] == "failed" for result in results)
+    scored = passed + failed
+    return {
+        "passed": passed,
+        "failed": failed,
+        "scored": scored,
+        "accuracy_percent": (passed / scored * 100) if scored else None,
+    }
 
-    print("\nAccuracy overall:", accuracy)
-    print("Average turns:", average_turns)
-    print("API errors:", api_errors)
+
+def _print_accuracy(label, stats):
+    if stats["scored"] == 0:
+        print(f"{label}: n/a (0 scored; 0 passed, 0 failed)")
+    else:
+        print(
+            f"{label}: {stats['passed']}/{stats['scored']} "
+            f"({stats['accuracy_percent']:.1f}%; n={stats['scored']}; "
+            f"{stats['failed']} failed)"
+        )
+
+
+def _print_summary(results, selected_count, partial, failure_reason=None):
+    if failure_reason:
+        run_status = "FAILED"
+    else:
+        run_status = "PARTIAL" if partial else "COMPLETE"
+    print(
+        f"\nRun status: {run_status} "
+        f"({len(results)}/{selected_count} selected questions processed)"
+    )
+    if failure_reason:
+        print(f"Run failure: {failure_reason}")
+    _print_accuracy("Overall automated accuracy", _accuracy_stats(results))
+    for split in ("dev", "test"):
+        split_results = [result for result in results if result.get("split") == split]
+        _print_accuracy(f"{split} automated accuracy", _accuracy_stats(split_results))
+
+    manual_reviews = sum(result["status"] == "needs_review" for result in results)
+    api_errors = sum(
+        result["status"] == "api_error" or result.get("error") is not None
+        for result in results
+    )
+    interrupted = max(0, selected_count - len(results))
+    turns = [result["turns"] for result in results if isinstance(result.get("turns"), (int, float))]
+    print("Manual-review-only questions:", manual_reviews)
+    print("API/agent errors:", api_errors)
+    print("Interrupted / unattempted questions:", interrupted)
+    print("Average turns:", f"{sum(turns) / len(turns):.2f}" if turns else "n/a")
+
     groups = defaultdict(list)
-    for result in scored:
-        groups[result["group"]].append(result)
-    print("Accuracy by group:")
+    for result in results:
+        groups[result.get("group") or "unspecified"].append(result)
+    print("Accuracy by question group:")
     for group in sorted(groups):
-        group_results = groups[group]
-        group_passed = sum(result["status"] == "passed" for result in group_results)
-        print(f"  {group}: {group_passed}/{len(group_results)} ({group_passed / len(group_results):.1%})")
+        _print_accuracy(f"  {group}", _accuracy_stats(groups[group]))
 
 
 def run_evals(questions, model=MODEL, ids=None, split=None, sleep_seconds=0.0, output_path=None):
@@ -75,6 +111,8 @@ def run_evals(questions, model=MODEL, ids=None, split=None, sleep_seconds=0.0, o
 
     output_path = output_path or _result_path(model)
     results = []
+    failure_reason = None
+    timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("a", encoding="utf-8") as results_file:
         for index, question in enumerate(selected, start=1):
@@ -97,6 +135,8 @@ def run_evals(questions, model=MODEL, ids=None, split=None, sleep_seconds=0.0, o
                 status = "passed" if score["passed"] else "failed"
 
             record = {
+                "model": model,
+                "timestamp": timestamp,
                 "id": question_id,
                 "group": question.get("group"),
                 "split": question.get("split"),
@@ -116,22 +156,26 @@ def run_evals(questions, model=MODEL, ids=None, split=None, sleep_seconds=0.0, o
             if question_id in COUNT_CHECK_IDS:
                 count = _readings_count()
                 if count != EXPECTED_READING_COUNT:
-                    raise RuntimeError(
+                    failure_reason = (
                         f"Readings integrity check failed after question {question_id}: "
                         f"expected {EXPECTED_READING_COUNT}, found {count}."
                     )
+                    print(f"  INTEGRITY CHECK FAILED: {failure_reason}", flush=True)
+                    break
                 print(f"  readings integrity check: {count}", flush=True)
 
-            if record["error"] in {"rate_limited", "api_connection_error", "api_timeout"}:
+            if record["status"] == "api_error":
+                failure_reason = f"Evaluation stopped after API/agent error: {record['error']}."
                 print(
-                    f"Stopping evaluation after model API error: {record['error']}.",
+                    f"Stopping evaluation after API/agent error: {record['error']}.",
                     flush=True,
                 )
                 break
             if sleep_seconds > 0 and index < len(selected):
                 time.sleep(sleep_seconds)
 
-    _print_summary(results)
+    partial = len(selected) != len(questions) or len(results) != len(selected)
+    _print_summary(results, len(selected), partial, failure_reason)
     print(f"Results appended to {output_path}")
     return results
 
@@ -142,13 +186,25 @@ def main():
     parser.add_argument("--split", choices=("dev", "test"), help="Run only this split.")
     parser.add_argument("--sleep", type=float, default=0.0, help="Seconds to wait between questions.")
     parser.add_argument("--model", default=MODEL, help="Model name (defaults to GEMINI_MODEL).")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Append results to this JSONL file instead of the model's default file.",
+    )
     args = parser.parse_args()
     if args.sleep < 0:
         parser.error("--sleep must be zero or greater")
 
     try:
         questions = load_questions()
-        run_evals(questions, args.model, args.ids, args.split, args.sleep)
+        run_evals(
+            questions,
+            args.model,
+            args.ids,
+            args.split,
+            args.sleep,
+            args.output,
+        )
     except (OSError, json.JSONDecodeError, ValueError, RuntimeError, sqlite3.Error) as error:
         parser.error(str(error))
 

@@ -59,6 +59,22 @@ def _first_sql_keyword(query):
     return ""
 
 
+def _safe_sqlite_error(error):
+    """Return a useful query-category error without echoing SQL or paths."""
+    message = str(error).lower()
+    if "no such table" in message:
+        return "Error: no such table referenced in query"
+    if "no such column" in message:
+        return "Error: no such column referenced in query"
+    if "ambiguous column name" in message:
+        return "Error: ambiguous column name in query"
+    if "no such function" in message:
+        return "Error: unknown SQL function in query"
+    if "syntax error" in message or "incomplete input" in message:
+        return "Error: SQL syntax error"
+    return "Error: query could not be completed"
+
+
 def get_schema():
     conn = None
     try:
@@ -113,15 +129,15 @@ def run_sql(query):
     except sqlite3.ProgrammingError as error:
         if "one statement" in str(error).lower():
             return "Error: only one SELECT query is allowed"
-        return "Error: query could not be completed"
+        return _safe_sqlite_error(error)
     except sqlite3.OperationalError as error:
         if "interrupted" in str(error).lower():
             return "Error: query exceeded the time limit"
         if "not authorized" in str(error).lower():
             return "Error: only read-only SELECT queries are allowed"
-        return "Error: query could not be completed"
-    except sqlite3.Error:
-        return "Error: query could not be completed"
+        return _safe_sqlite_error(error)
+    except sqlite3.Error as error:
+        return _safe_sqlite_error(error)
     finally:
         if conn is not None:
             conn.close()

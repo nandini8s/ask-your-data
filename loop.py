@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from tools import get_schema, run_sql
 load_dotenv()
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 MAX_TURNS = 8
 MAX_HISTORY_MESSAGES = 10
 MAX_HISTORY_MESSAGE_CHARS = 2000
